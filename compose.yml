@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  colab:
+    image: us-docker.pkg.dev/colab-images/public/runtime
+    volumes:
+      - ./settings.json:/datalab/web/config#/settings.json
+      - ./jupyter_notebook_config.py:/root/.jupyter/jupyter_notebook_config.py 
+    network_mode: service:tailscale
+    depends_on:
+      - tailscale
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: tailscaled
+    ports:
+      - "9000:8080"
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    volumes:
+      - tailscale-data:/var/lib/tailscale
+    environment:
+      - TS_AUTHKEY=tskey-auth-kX7jJ2H6Zr11CNTRL-pTprPLD6QWAofukDWsHURAXWs4ZqW4ioJ
+      - TS_USERSPACE=false
+      - TS_HOSTNAME=colab
+      - TS_EXTRA_ARGS=--accept-routes
+    restart: unless-stopped
+
+volumes:
+  tailscale-data:
