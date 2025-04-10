@@ -1,0 +1,75 @@
+name: Run Colab ghcr
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-colab-ghcr:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Free up disk space
+      run: |
+        echo "Before cleanup disk space:"
+        df -h
+        
+        # Remove unnecessary packages and cache
+        sudo apt-get clean
+        sudo apt-get autoremove -y
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+        
+        # Remove large packages that aren't needed
+        sudo apt-get remove -y '^aspnetcore-.*' '^dotnet-.*' '^llvm-.*' '^mono-.*' '^mysql-.*' '^php-.*'
+        
+        # Remove unnecessary tools and directories
+        sudo rm -rf /usr/local/share/boost /usr/local/share/chromium /usr/share/cmake /usr/local/.ghcup
+        sudo rm -rf /usr/share/swift /usr/local/julia* /usr/local/share/powershell 
+        
+        # Remove build tools caches
+        sudo rm -rf /var/lib/gems/ /var/cache/apt/archives/ 
+        sudo rm -rf /home/linuxbrew/.linuxbrew/
+        sudo rm -rf /usr/local/lib/node_modules 
+        sudo rm -rf /opt/microsoft/ /opt/az/ /usr/share/az_*/ /opt/hostedtoolcache/
+        
+        echo "After cleanup disk space:"
+        df -h
+
+    - name: Set up Docker
+      uses: docker/setup-buildx-action@v2
+
+    - name: Install ngrok
+      run: |
+        curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null && \
+        echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list && \
+        sudo apt update && sudo apt install ngrok
+
+    - name: Start ngrok
+      run: |
+        ngrok authtoken $NGROK_AUTH_TOKEN
+        ngrok tcp 9000 &
+        sleep 5 # Wait for ngrok to initialize
+      env:
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+        
+    - name: Display ngrok public URL
+      run: |
+        echo "Ngrok TCP Tunnel:"
+        NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+        echo $NGROK_URL
+        
+        # Extract hostname and port from ngrok URL for TCP tunnel
+        NGROK_HOST=$(echo $NGROK_URL | sed -E 's|tcp://([^:]+).*|\1|')
+        NGROK_PORT=$(echo $NGROK_URL | sed -E 's|tcp://[^:]+:([0-9]+).*|\1|')
+        
+        echo ""
+        echo "To forward this connection to your local port 9000, run this command:"
+        echo "socat TCP-LISTEN:9000,reuseaddr,fork TCP:$NGROK_HOST:$NGROK_PORT"
+
+    - name: Run Docker container in foreground
+      run: |
+        docker run --name colab-runtime -p 8080:8080 -p 9000:8080 ghcr.io/bugparty/colab:latest
+
+
