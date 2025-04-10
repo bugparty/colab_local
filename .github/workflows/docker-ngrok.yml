@@ -24,9 +24,6 @@ jobs:
         # Remove large packages that aren't needed
         sudo apt-get remove -y '^aspnetcore-.*' '^dotnet-.*' '^llvm-.*' '^mono-.*' '^mysql-.*' '^php-.*'
         
-        # Clean Docker resources
-        docker system prune -af
-        
         # Remove unnecessary tools and directories
         sudo rm -rf /usr/local/share/boost /usr/local/share/chromium /usr/share/cmake /usr/local/.ghcup
         sudo rm -rf /usr/share/swift /usr/local/julia* /usr/local/share/powershell 
