@@ -1,0 +1,56 @@
+name: Run Docker and Ngrok
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-docker-ngrok:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Docker
+      uses: docker/setup-buildx-action@v2
+
+    - name: Install ngrok
+      run: |
+        curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null && \
+        echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list && \
+        sudo apt update && sudo apt install ngrok
+
+    - name: Start ngrok
+      run: |
+        ngrok authtoken $NGROK_AUTH_TOKEN
+        ngrok http 8080 &
+        sleep 5 # Wait for ngrok to initialize
+      env:
+        NGROK_AUTH_TOKEN: ${{ secrets.NGROK_AUTH_TOKEN }}
+        
+    - name: Display ngrok public URL
+      run: |
+        echo "Ngrok Public URL:"
+        NGROK_URL=$(curl -s http://127.0.0.1:4040/api/tunnels | jq -r '.tunnels[0].public_url')
+        echo $NGROK_URL
+        
+        # Extract hostname and port from ngrok URL
+        NGROK_HOST=$(echo $NGROK_URL | sed -E 's|https?://([^:]+).*|\1|')
+        NGROK_PORT=$(echo $NGROK_URL | sed -E 's|https?://[^:]+:([0-9]+).*|\1|')
+        if [[ -z "$NGROK_PORT" || "$NGROK_PORT" == "$NGROK_URL" ]]; then
+          if [[ $NGROK_URL == https://* ]]; then
+            NGROK_PORT=443
+          else
+            NGROK_PORT=80
+          fi
+        fi
+        
+        echo ""
+        echo "To forward this connection to your local port 9000, run this command:"
+        echo "socat TCP-LISTEN:9000,reuseaddr,fork TCP:$NGROK_HOST:$NGROK_PORT"
+
+    - name: Run Docker container in foreground
+      run: |
+        docker run --name colab-runtime -p 8080:8080 us-docker.pkg.dev/colab-images/public/runtime
+
+
