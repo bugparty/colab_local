@@ -1,5 +1,10 @@
 # hummm
 
+# a better colab
+
+Here’s the updated README section with detailed instructions:
+
+---
 
 ## Setting Up Colab Local Connection
 
@@ -44,8 +49,18 @@ Follow these steps to connect Colab to your local instance:
    - Once the action completes, the logs will provide a link and password for connecting to the instance.
 
 7. **Paste the Link into Colab**  
-   - Copy the link and password from the logs.  
+   - Copy the link with the password provided in the logs.  
    - Paste it into the Google Colab notebook when connecting to the local runtime.
+
+---
+
+## Why Use This Setup?
+
+Google Colab is a powerful tool for free users, but it has certain hardware limitations. Based on benchmark results:  
+- **Colab Free Tier CPUs**: Limited to a single core of an older Intel CPU, which can significantly slow down CPU-bound tasks.  
+- **GitHub Actions Runner**: Provides access to modern 4-core AMD EPYC processors, offering much better performance for computational tasks.  
+
+By leveraging GitHub Actions to set up a local runtime, you can take advantage of this improved hardware while still using Colab's convenient interface. This setup is especially beneficial for tasks that require higher CPU performance or parallel processing.
 
 ---
 
@@ -72,4 +87,3 @@ Follow these steps to install `socat` on macOS:
      socat -h
      ```
    - If installed correctly, this command will display the help information for `socat`.
-
